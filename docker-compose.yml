@@ -5,6 +5,6 @@ services:
     ports:
      - "5000:5000"
     volumes:
-     - .:/app
+     - .:/src
 
-    command: ["python", "./app/index.py"]
+    command: ["python", "./src/index.py"]
