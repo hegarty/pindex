@@ -4,6 +4,7 @@ import boto3
 import logging
 
 from boto3.session import Session
+#from pprint import pprint
 
 # load yml file to dictionary
 s = os.path.dirname(__file__)
@@ -26,13 +27,19 @@ creds = yaml.load(open(f))
    	#return session.client('s3', config=boto3.session.Config(signature_version='s3v4'))
 
 
-session = Session(aws_access_key_id = creds['aws']['AWSAccessKeyId'],
-                  aws_secret_access_key = creds['aws']['AWSSecretKey'])
+session = Session(aws_access_key_id = creds['aws']['AWSAccessKeyId'],aws_secret_access_key = creds['aws']['AWSSecretKey'])
+#s3 = session.resource('s3')
+#your_bucket = s3.Bucket('shredly/photos')
+
+
+#for s3_file in your_bucket.objects.all():
+#    for key in s3_file
+#   print(s3_file.key)
+
+prefix = "stamps/"
 s3 = session.resource('s3')
-your_bucket = s3.Bucket('tsh908')
+bucket = s3.Bucket(name="shredly")
 
-for s3_file in your_bucket.objects.all():
-    print(s3_file.key)
-
-
-
+for obj in bucket.objects.filter(Prefix=prefix):
+    # print('{1}'.format(bucket.name, obj.key))
+    print(obj)
