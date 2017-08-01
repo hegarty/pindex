@@ -7,4 +7,4 @@ services:
     volumes:
      - .:/src
 
-    command: ["python", "./src/index.py"]
+    command: ["python", "./src/label.py"]
