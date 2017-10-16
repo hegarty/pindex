@@ -3,68 +3,96 @@ import os
 import boto3
 import logging
 import json
+import time
 
 from boto3.session import Session
+#from pprint import pprint
 
 # load yml file to dictionary
 s = os.path.dirname(__file__)
 f = os.path.join(s, 'conf.d/secret.yaml')
 creds = yaml.load(open(f))
 
-#def _connect_s3():
-	#Creates a boto3 client from 
-   	#@type jw_config: jwplayer.config.AppConfig object
-  	#@param jw_config: AppConfig object with aws config variables
-   	#@rtype: boto3.session.Session.client
-   	#@return: boto3.session.Session.client, boto3 client
+aws_k = creds['aws']['AWSAccessKeyId'] 
+aws_s = creds['aws']['AWSSecretKey']
 
-   	#session = boto3.session.Session(
-   	#region_name = 'us_east_1',
-   	#aws_access_key_id = creds['aws']['AWSAccessKeyId'],
-   	#aws_secret_access_key = creds['aws']['AWSSecretKey']
-   	#)
+#Init S3 client and return a list of all obejcts in referenced bucket
+bucket = 'pindex908'
+prefix = ''
+s3_host = 'https://s3.amazonaws.com'
+s3_client = boto3.client('s3',aws_access_key_id = aws_k, aws_secret_access_key = aws_s, region_name='us-east-1')
+s3_res = s3_client.list_objects(Bucket = bucket,Prefix = prefix)
 
-   	#return session.client('s3', config=boto3.session.Config(signature_version='s3v4'))
+rkg_client = boto3.client('rekognition',aws_access_key_id = aws_k,aws_secret_access_key = aws_s,region_name='us-east-1')
 
+ddb_client = boto3.resource('dynamodb',aws_access_key_id = aws_k,aws_secret_access_key = aws_s,region_name='us-east-1')
 
-session = Session(aws_access_key_id = creds['aws']['AWSAccessKeyId'],
-                  aws_secret_access_key = creds['aws']['AWSSecretKey'])
-s3 = session.resource('s3')
-your_bucket = s3.Bucket('pindex908')
-
-for s3_file in your_bucket.objects.all():
-    print(s3_file.key)
-
-#Labels
-if __name__ == "__main__":
-    fileName='surprised.jpg'
-    bucket='pindex908'
-
-    client=boto3.client('rekognition',
-  	aws_access_key_id = creds['aws']['AWSAccessKeyId'],
-    aws_secret_access_key = creds['aws']['AWSSecretKey'],
-	region_name='us-east-1')
-
-    response = client.detect_labels(Image={'S3Object':{'Bucket':bucket,'Name':fileName}},MinConfidence=75)
-
-    print('Detected labels for ' + fileName)
-    for label in response['Labels']:
-        print (label['Name'] + ' : ' + str(label['Confidence']))
+meta = {}
+# Loop through each file and pull labels
+for f in s3_res['Contents']:
+	time.sleep(1)
+	# Get the file name
+	n = f['Key'].rsplit('/', 1)
+	filename = n[0]
+	#print ('FILE: '+s3_host+bucket+'/'+n[0],"---",repr(time.time()))
+	meta['resource'] = s3_host+bucket+'/'+filename
+	meta['labels'] = []
+	rkg_res = rkg_client.detect_labels(Image={'S3Object':{'Bucket':bucket,'Name':filename}},MinConfidence=98)
+	for label in rkg_res['Labels']:
+		meta['labels'].append(label['Name']) 
 
 #Detect Faces
-if __name__ == "__main__":
-    #fileName='input.jpg'
-    #bucket='bucket'
-    #client=boto3.client('rekognition')
-
-    response = client.detect_faces(Image={'S3Object':{'Bucket':bucket,'Name':fileName}},Attributes=['ALL'])
-
-    print('Detected faces for ' + fileName)
-    for faceDetail in response['FaceDetails']:
-        print('The detected face is between ' + str(faceDetail['AgeRange']['Low'])
-              + ' and ' + str(faceDetail['AgeRange']['High']) + ' years old')
-        print('Here are the other attributes:')
-        print(json.dumps(faceDetail, indent=4, sort_keys=True))
+	face_res = rkg_client.detect_faces(Image={'S3Object':{'Bucket':bucket,'Name':filename}},Attributes=['ALL'])
+	for face_detail in face_res['FaceDetails']:
+		#meta['age_range']['low'] = face_detail['AgeRange']['Low']
+		#meta['age_range']['high'] = face_detail['AgeRange']['High']
+		meta['age_range'] = face_detail['AgeRange']
+		meta['emotions'] = face_detail['Emotions']
 
 
 
+
+	table = ddb_client.Table('r_test')
+	table.put_item(
+	Item={
+		'resource': s3_host+bucket+'/'+filename,
+		'meta': json.dumps(meta)
+		})
+
+
+	#print('Detected faces for ' + fn)
+	#for faceDetail in response['FaceDetails']:
+		#print('The detected face is between ' + str(faceDetail['AgeRange']['Low']) + ' and ' + str(faceDetail['AgeRange']['High']) + ' years old')
+		#print('Here are the other attributes:')
+        
+	#for key in response['FaceDetails']:
+		#print(key)
+		#if 'Emotions' in faceDetail: 
+			#for fd in faceDetail['Emotions']:
+				#print(json.dumps(fd['Type'], indent=4, sort_keys=True))
+#
+#dynamodb = boto3.resource('dynamodb', region_name='us-west-2', endpoint_url="http://localhost:8000")
+#
+#table = dynamodb.Table('Movies')
+#
+#title = "The Big New Movie"
+#year = 2015
+#
+#response = table.put_item(
+#   Item={
+#        'year': year,
+#        'title': title,
+#        'info': {
+#            'plot':"Nothing happens at all.",
+#            'rating': decimal.Decimal(0)
+#        }
+#    }
+#)
+#
+#print("PutItem succeeded:")
+#
+
+
+#for s3_file in your_bucket.objects.all():
+#    for key in s3_file
+#   print(s3_file.key)
