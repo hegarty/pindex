@@ -38,22 +38,68 @@ def ddb(resource_url, labels, age_range, emotions):
 		'emotions': emotions
 		})
 
-def get_labels(s3_contents = s3_res['Contents']):
-	for f in s3_contents:
-		labels = []
+def get_filename(f):
+	n = f['Key'].rsplit('/', 1)
+	print ('FILE: '+s3_host+bucket+'/'+n[0],"---",repr(time.time()))
+	return n[0]
+
+def get_meta(f):
+	labels = []
+	filename = get_filename(f)
+	resource_url = s3_host+bucket+'/'+filename
+	rkg_res = rkg_client.detect_labels(Image={'S3Object':{'Bucket':bucket,'Name':filename}},MinConfidence=98)
+
+	for label in rkg_res['Labels']:
+		labels.append(label['Name'])
+
+	emotions = []
+	#filename = get_filename(f)
+	res = rkg_client.detect_faces(Image={'S3Object':{'Bucket':bucket,'Name':filename}},Attributes=['ALL'])
+	print("res['FaceDetails']: ",res['FaceDetails'])
+
+'''
+	for face_detail in res['FaceDetails']:
+		age_range = face_detail['AgeRange']
+		print('Emotions: ',face_detail['Emotions'])
+
+		for emt in face_detail['Emotions']:
+			emotions.append(emt['Type'])
+			print('Emotion Type: ',emt['Type'],filename)
+	print(resource_url,labels,age_range,emotions)
+	#ddb(resource_url,labels,"ok","nk")
+'''
+
+def get_labels(f):
+	filename = get_filename(f)
+	resource_url = s3_host+bucket+'/'+filename
+	rkg_res = rkg_client.detect_labels(Image={'S3Object':{'Bucket':bucket,'Name':filename}},MinConfidence=98)
+	
+	for label in rkg_res['Labels']:
+		labels.append(label['Name'])
+
+	#ddb(resource_url,labels,"ok","nk")
+
+def get_emotions(f):
+	emotions = []
+	filename = get_filename(f)
+	res = rkg_client.detect_faces(Image={'S3Object':{'Bucket':bucket,'Name':filename}},Attributes=['ALL'])
+	for face_detail in res['FaceDetails']:
+		age_range = face_detail['AgeRange']
+		print('Emotions: ',face_detail['Emotions'])
+
+		for emt in face_detail['Emotions']:
+			emotions.append(emt['Type'])
+			print('Emotion Type: ',emt['Type'],filename)
+
+
+def init():
+	for f in s3_res['Contents']:
 		time.sleep(1)
-		# Get the file name
-		n = f['Key'].rsplit('/', 1)
-		filename = n[0]
-		print ('FILE: '+s3_host+bucket+'/'+n[0],"---",repr(time.time()))
-		resource_url = s3_host+bucket+'/'+filename
-		rkg_res = rkg_client.detect_labels(Image={'S3Object':{'Bucket':bucket,'Name':filename}},MinConfidence=98)
-		for label in rkg_res['Labels']:
-			labels.append(label['Name'])
+		get_meta(f)
+		#get_labels(f)
+		#get_emotions(f)
 
-		ddb(resource_url,labels,"ok","nk")
-
-get_labels()
+init()
 
 '''
 # Loop through each file and pull labels
