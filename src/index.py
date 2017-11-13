@@ -24,8 +24,9 @@ s3_client = boto3.client('s3',aws_access_key_id = aws_k, aws_secret_access_key =
 s3_res = s3_client.list_objects(Bucket = bucket,Prefix = prefix)
 
 rkg_client = boto3.client('rekognition',aws_access_key_id = aws_k,aws_secret_access_key = aws_s,region_name='us-east-1')
-
 ddb_client = boto3.resource('dynamodb',aws_access_key_id = aws_k,aws_secret_access_key = aws_s,region_name='us-east-1')
+
+meta = {"resource_url":"none","labels":[],"emotions":[]}
 
 
 def ddb(meta):
@@ -46,9 +47,7 @@ def get_filename(f):
 	print ('FILE: '+s3_host+bucket+'/'+n[0],"---",repr(time.time()))
 	return n[0]
 
-def get_meta():
-	meta = {"resource_url":"none","labels":[],"emotions":[]}
-
+def init():
 	for f in s3_res['Contents']:
 		time.sleep(1)
 		filename = get_filename(f)
@@ -67,4 +66,6 @@ def get_meta():
 					meta['emotions'].append(emt['Type'])
 
 		ddb(meta)
-get_meta()
+
+init()
+

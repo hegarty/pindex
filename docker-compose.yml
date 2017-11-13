@@ -6,5 +6,4 @@ services:
      - "5000:5000"
     volumes:
      - .:/src
-
     command: ["python", "./src/index.py"]

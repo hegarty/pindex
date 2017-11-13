@@ -2,3 +2,4 @@ flask
 boto3==1.4.4
 pyyaml
 python-json-logger==0.1.7
+pytest
