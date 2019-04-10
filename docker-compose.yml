@@ -1,9 +1,9 @@
-version: '2'
+version: '3'
 services:
-  web:
+  worker:
     build: .
     ports:
      - "5000:5000"
-    volumes:
-     - .:/src
-    command: ["python", "./src/index.py"]
+    #volumes:
+    # - .:/worker/src
+    #command: ["python", ".:/worker/src/index.py"]
